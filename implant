@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+
+import struct
+import netifaces
+from netaddr import *
+import socket
+import time
+import binascii
+
+interfaces = netifaces.interfaces()
+hosts = {}
+
+def arp_header(packet):
+
+    (a ,b ,c ,d ,e ,f ,g ,h ,i ) = struct.unpack('2s2s1s1s2s6s4s6s4s',packet[14:42])
+
+    hw_type=(binascii.hexlify(a)).decode('utf-8')
+    proto_type=(binascii.hexlify(b)).decode('utf-8')
+    hw_size=(binascii.hexlify(c)).decode('utf-8')
+    proto_size=(binascii.hexlify(d)).decode('utf-8')
+    opcode=(binascii.hexlify(e)).decode('utf-8')
+
+    return (hw_type,proto_type,hw_size,proto_size,opcode,socket.inet_ntoa(g),socket.inet_ntoa(i))
+
+for interface in interfaces:
+    if interface != 'lo':
+        hosts[interface] = []
+        sock = socket.socket(socket.PF_PACKET, socket.SOCK_RAW, socket.htons(0x0003))
+        sock.settimeout(1.0)
+        sock.bind((interface,0))
+        # Getting the interfaces on the current computer
+        addrs = netifaces.ifaddresses(interface)
+        # Getting the first address of the returned list (assuming no multiple address in an interface)
+        MAC_addr = addrs[netifaces.AF_LINK][0]
+        IP4_addr = addrs[netifaces.AF_INET][0]
+        # Getting the Network IP.
+        my_ip = IPAddress(IP4_addr['addr'])
+        netmask = IPAddress(IP4_addr['netmask'])
+        network_ip = IPAddress((int(my_ip) & int(netmask)))
+        # Convert network IPAddress to IPNetwork
+        network_ip = IPNetwork(network_ip)
+        network_ip.netmask = netmask
+
+        # Destination is Broadcast
+        ethernet_header = bytes.fromhex(MAC_addr['broadcast'].replace(":", ""))
+        # Source is current MAC addr
+        ethernet_header += bytes.fromhex(MAC_addr['addr'].replace(":", ""))
+        ethernet_header += b'\x08\x06' # ARP Protocol
+
+        arp_header = b'\x00\x01\x08\x00\x06\x04' # Hardware/Protocol type/length
+
+        # Iterate over every usable IP address in current subnet
+        cur_ip = IPAddress(int(network_ip.ip) + 1)
+        while cur_ip != network_ip.broadcast:
+            arp_header += b'\x00\x01' # Request
+            arp_data = arp_header + bytes.fromhex(MAC_addr['addr'].replace(":", "")) # Source MAC addr
+            arp_data += socket.inet_aton(str(my_ip)) # Source IP
+            arp_data += b'\x00\x00\x00\x00\x00\x00' # Zeroed out in a request
+            arp_data += socket.inet_aton(str(cur_ip)) # Requested IP address
+
+            frame = ethernet_header + arp_data # The entire ethernet frame
+
+            sock.send(frame) # send the frame
+            
+            try: # try to receive a response immediately. The timeout is 1 second
+                received = 0
+                while received < 3:
+                    response = sock.recv(4096)
+                    header = struct.unpack("!6s6sH", response[0:14])
+                    if header[2] == b'\x08\x06': # The protocol is ARP
+                        print(arp_header(response))
+                        break
+                    received += 1
+                if received == 3:
+                    print("Timed out waiting for data")
+            except socket.timeout:
+                print("Timed out waiting for data")
+            except Exception as e:
+                print(f"An error occurred when trying to recv (not timeout): {e}")
+                print("continuing to scan for other IPs")
+
+            cur_ip = IPAddress(int(cur_ip) + 1)
+        sock.close()
