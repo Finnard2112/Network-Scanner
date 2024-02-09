@@ -52,8 +52,8 @@ for interface in interfaces:
         # Iterate over every usable IP address in current subnet
         cur_ip = IPAddress(int(network_ip.ip) + 1)
         while cur_ip != network_ip.broadcast:
-            arp_header += b'\x00\x01' # Request
-            arp_data = arp_header + bytes.fromhex(MAC_addr['addr'].replace(":", "")) # Source MAC addr
+            arp_data = arp_header + b'\x00\x01' # Request opcode
+            arp_data += bytes.fromhex(MAC_addr['addr'].replace(":", "")) # Source MAC addr
             print("\nARP Source MAC addr: ")
             print(bytes.fromhex(MAC_addr['addr'].replace(":", "")))
             arp_data += socket.inet_aton(str(my_ip)) # Source IP
@@ -83,7 +83,7 @@ for interface in interfaces:
                         break
                     received += 1
                 if received == 3:
-                    print("Timed out waiting for data")
+                    print("Didn't receive an ARP response within 3 packets")
             except socket.timeout:
                 print("Timed out waiting for data")
             except Exception as e:
