@@ -54,16 +54,20 @@ for interface in interfaces:
         while cur_ip != network_ip.broadcast:
             arp_header += b'\x00\x01' # Request
             arp_data = arp_header + bytes.fromhex(MAC_addr['addr'].replace(":", "")) # Source MAC addr
-            print("\nARP Source MAC addr: " + bytes.fromhex(MAC_addr['addr'].replace(":", "")))
+            print("\nARP Source MAC addr: ")
+            print(bytes.fromhex(MAC_addr['addr'].replace(":", "")))
             arp_data += socket.inet_aton(str(my_ip)) # Source IP
             print("\nSource IP: " + str(my_ip))
-            print("\nSource IP in bytes: " + socket.inet_aton(str(my_ip)))
+            print("\nSource IP in bytes: ")
+            print(socket.inet_aton(str(my_ip)))
             arp_data += b'\x00\x00\x00\x00\x00\x00' # Zeroed out in a request
             arp_data += socket.inet_aton(str(cur_ip)) # Requested IP address
             print("\nRequested IP: " + str(cur_ip))
-            print("\nSource IP in bytes: " + socket.inet_aton(str(cur_ip)))
+            print("\nSource IP in bytes: ")
+            print(socket.inet_aton(str(cur_ip)))
 
-            print("\nARP Packet: "+ arp_data)
+            print("\nARP Packet: ")
+            print(arp_data)
 
             frame = ethernet_header + arp_data # The entire ethernet frame
 
