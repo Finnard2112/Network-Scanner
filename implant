@@ -10,18 +10,6 @@ import binascii
 interfaces = netifaces.interfaces()
 hosts = {}
 
-def arp_header(packet):
-
-    (a ,b ,c ,d ,e ,f ,g ,h ,i ) = struct.unpack('2s2s1s1s2s6s4s6s4s',packet[14:42])
-
-    hw_type=(binascii.hexlify(a)).decode('utf-8')
-    proto_type=(binascii.hexlify(b)).decode('utf-8')
-    hw_size=(binascii.hexlify(c)).decode('utf-8')
-    proto_size=(binascii.hexlify(d)).decode('utf-8')
-    opcode=(binascii.hexlify(e)).decode('utf-8')
-
-    return (hw_type,proto_type,hw_size,proto_size,opcode,socket.inet_ntoa(g),socket.inet_ntoa(i))
-
 for interface in interfaces:
     if interface != 'lo' and interface != 'eth1':
         hosts[interface] = []
@@ -74,7 +62,12 @@ for interface in interfaces:
                     header = struct.unpack("!6s6sH", response[0:14])
                     if header[2] == 0x0806: # The protocol is ARP
                         print ("SUCCESSFULLY RECEIVED A RESPONSE")
-                        print(arp_header(response))
+                        *_, sha, spa, tha, tpa = struct.unpack('2s2s1s1s2s6s4s6s4s', response[14:42])
+                        sha = ':'.join(format(byte, '02x') for byte in sha)
+                        tha = ':'.join(format(byte, '02x') for byte in tha)
+                        spa = socket.inet_ntoa(spa)
+                        tpa = socket.inet_ntoa(tpa)
+                        print("Host discovered. MAC Address: " + sha + ". IP address: " + tpa)
                         break
                     received += 1
                 if received == 3:
