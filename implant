@@ -54,18 +54,12 @@ for interface in interfaces:
         while cur_ip != network_ip.broadcast:
             arp_data = arp_header + b'\x00\x01' # Request opcode
             arp_data += bytes.fromhex(MAC_addr['addr'].replace(":", "")) # Source MAC addr
-            print("\nARP Source MAC addr: ")
-            print(bytes.fromhex(MAC_addr['addr'].replace(":", "")))
             arp_data += socket.inet_aton(str(my_ip)) # Source IP
-            print("\nSource IP: " + str(my_ip))
-            print("\nSource IP in bytes: ")
-            print(socket.inet_aton(str(my_ip)))
             arp_data += b'\x00\x00\x00\x00\x00\x00' # Zeroed out in a request
             arp_data += socket.inet_aton(str(cur_ip)) # Requested IP address
             print("\nRequested IP: " + str(cur_ip))
-            print("\nSource IP in bytes: ")
+            print("\Requested IP in bytes: ")
             print(socket.inet_aton(str(cur_ip)))
-
             print("\nARP Packet: ")
             print(arp_data)
 
@@ -79,6 +73,7 @@ for interface in interfaces:
                     response = sock.recv(4096)
                     header = struct.unpack("!6s6sH", response[0:14])
                     if header[2] == b'\x08\x06': # The protocol is ARP
+                        print ("SUCCESSFULLY RECEIVED A RESPONSE")
                         print(arp_header(response))
                         break
                     received += 1
