@@ -72,7 +72,7 @@ for interface in interfaces:
                 while received < 3:
                     response = sock.recv(4096)
                     header = struct.unpack("!6s6sH", response[0:14])
-                    if header[2] == b'\x08\x06': # The protocol is ARP
+                    if header[2] == 0x0806: # The protocol is ARP
                         print ("SUCCESSFULLY RECEIVED A RESPONSE")
                         print(arp_header(response))
                         break
