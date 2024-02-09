@@ -23,7 +23,7 @@ def arp_header(packet):
     return (hw_type,proto_type,hw_size,proto_size,opcode,socket.inet_ntoa(g),socket.inet_ntoa(i))
 
 for interface in interfaces:
-    if interface != 'lo':
+    if interface != 'lo' or interface != 'eth1':
         hosts[interface] = []
         sock = socket.socket(socket.PF_PACKET, socket.SOCK_RAW, socket.htons(0x0003))
         sock.settimeout(1.0)
