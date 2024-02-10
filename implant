@@ -4,17 +4,56 @@ import struct
 import netifaces
 from netaddr import *
 import socket
-import time
-import binascii
+import threading
+from queue import Queue
 
 interfaces = netifaces.interfaces()
 hosts = {}
 
+print_lock = threading.Lock()
+
+def threader():
+    while True:
+        port = q.get()
+        tcp_scan(port)
+        q.task_done()
+
+def tcp_scan(port):
+    try:
+        # Create AF_INET socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.settimeout(0.3) # Fast timeout?
+        sock.connect((dest_ip,port))
+
+        # Receive some data for service identification
+        banner = sock.recv(2048)
+        banner = banner.decode()
+
+        with print_lock:
+            print(f"Banner is: {banner}")
+
+            if banner.startswith('SSH-'):
+                print(f"SSH detected on port {port}")
+            elif banner.startswith('220'):
+                print(f"FTP detected on port {port}")
+            else:
+                print(f"Other service detected")
+
+    except OSError as e:
+        print(f"Socket creation failed")
+    except Exception as e:
+        print(f'{port} is closed!')
+    finally:
+        sock.close()
+
 for interface in interfaces:
     if interface != 'lo' and interface != 'eth1':
+        # ARP Host discovery
+
         hosts[interface] = []
         sock = socket.socket(socket.PF_PACKET, socket.SOCK_RAW, socket.htons(0x0003))
-        sock.settimeout(1.0)
+        sock.settimeout(0.3)
         sock.bind((interface,0))
         # Getting the interfaces on the current computer
         addrs = netifaces.ifaddresses(interface)
@@ -46,10 +85,6 @@ for interface in interfaces:
             arp_data += b'\x00\x00\x00\x00\x00\x00' # Zeroed out in a request
             arp_data += socket.inet_aton(str(cur_ip)) # Requested IP address
             print("\nRequested IP: " + str(cur_ip))
-            print("\Requested IP in bytes: ")
-            print(socket.inet_aton(str(cur_ip)))
-            print("\nARP Packet: ")
-            print(arp_data)
 
             frame = ethernet_header + arp_data # The entire ethernet frame
 
@@ -63,11 +98,10 @@ for interface in interfaces:
                     if header[2] == 0x0806: # The protocol is ARP
                         print ("SUCCESSFULLY RECEIVED A RESPONSE")
                         *_, sha, spa, tha, tpa = struct.unpack('2s2s1s1s2s6s4s6s4s', response[14:42])
-                        sha = ':'.join(format(byte, '02x') for byte in sha)
-                        tha = ':'.join(format(byte, '02x') for byte in tha)
-                        spa = socket.inet_ntoa(spa)
-                        tpa = socket.inet_ntoa(tpa)
+                        sha = ':'.join(format(byte, '02x') for byte in sha) # Convert MAC Address to string
+                        spa = socket.inet_ntoa(spa) # Convert IP address to string
                         print("Host discovered. MAC Address: " + sha + ". IP address: " + tpa)
+                        hosts[interface].append({'IP': tpa, 'MAC': sha})
                         break
                     received += 1
                 if received == 3:
@@ -77,6 +111,25 @@ for interface in interfaces:
             except Exception as e:
                 print(f"An error occurred when trying to recv (not timeout): {e}")
                 print("continuing to scan for other IPs")
-
             cur_ip = IPAddress(int(cur_ip) + 1)
+        
+        # Add current machine to interface
+        hosts[interface].append({'IP': str(my_ip), 'MAC': MAC_addr['addr']})
+
+        # Close PF_PACKET socket
         sock.close()
+
+        source_ip = str(my_ip)
+
+        for host in hosts[interface]:
+            dest_ip = host['IP']
+            print(f"Scanning host {dest_ip}")
+            q = Queue()
+            for port in range(1, 65536):
+                q.put(port)
+            for x in range(5):
+                thread = threading.Thread(target=threader)
+                thread.daemon = True
+                thread.start()
+            q.join()
+
