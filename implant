@@ -45,7 +45,7 @@ def tcp_scan(port):
         print(f"Socket creation failed")
         return -1
     except Exception as e:
-        print(f'{port} is closed!')
+        pass
     finally:
         sock.close()
 
