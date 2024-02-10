@@ -39,9 +39,11 @@ def tcp_scan(port):
                 print(f"FTP detected on port {port}")
             else:
                 print(f"Other service detected")
+        return 0
 
     except OSError as e:
         print(f"Socket creation failed")
+        return -1
     except Exception as e:
         print(f'{port} is closed!')
     finally:
@@ -77,7 +79,7 @@ for interface in interfaces:
         arp_header = b'\x00\x01\x08\x00\x06\x04' # Hardware/Protocol type/length
 
         # Optional: Ends the scan early. 
-        count = 1000 # Scan the first 1000 IPs. Otherwise set to a really big number.
+        count = 10 # Scan the first 10 IPs. Otherwise set to a really big number.
 
         # Iterate over every usable IP address in current subnet
         cur_ip = IPAddress(int(network_ip.ip) + 1)
