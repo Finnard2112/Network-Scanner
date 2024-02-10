@@ -53,7 +53,7 @@ for interface in interfaces:
 
         hosts[interface] = []
         sock = socket.socket(socket.PF_PACKET, socket.SOCK_RAW, socket.htons(0x0003))
-        sock.settimeout(0.3)
+        sock.settimeout(0.1)
         sock.bind((interface,0))
         # Getting the interfaces on the current computer
         addrs = netifaces.ifaddresses(interface)
