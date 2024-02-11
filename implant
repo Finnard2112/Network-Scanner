@@ -69,7 +69,7 @@ for interface in interfaces:
     if interface != 'lo' and interface != 'eth1':
         # ARP Host discovery
 
-        hosts[interface] = []
+        hosts[interface] = {}
         sock = socket.socket(socket.PF_PACKET, socket.SOCK_RAW, socket.htons(0x0003))
         sock.settimeout(0.1)
         sock.bind((interface,0))
@@ -140,7 +140,7 @@ for interface in interfaces:
 
         
         # Add current machine to interface
-        hosts[interface].append({'IP': str(my_ip), 'MAC': MAC_addr['addr']})
+        hosts[interface][str(my_ip)] = {"mac": MAC_addr['addr'], "tcp": {}}
 
         # Close PF_PACKET socket
         sock.close()
