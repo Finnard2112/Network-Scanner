@@ -124,7 +124,7 @@ for interface in interfaces:
 
         
         # Add current machine to interface
-        hosts[interface].append({'IP': str(my_ip), 'MAC': MAC_addr['addr']})
+        # hosts[interface].append({'IP': str(my_ip), 'MAC': MAC_addr['addr']})
 
         # Close PF_PACKET socket
         sock.close()
