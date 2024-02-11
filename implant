@@ -5,6 +5,7 @@ import netifaces
 from netaddr import *
 import socket
 import threading
+import json
 from queue import Queue
 
 interfaces = netifaces.interfaces()
@@ -31,16 +32,18 @@ def tcp_scan(port):
         banner = banner.decode()
 
         with print_lock:
-            print(f"Banner is: {banner}")
-
             if banner.startswith('SSH-'):
                 print(f"SSH detected on port {port}")
+                hosts[interface][dest_ip]["tcp"][str(port)] = "ssh"
             elif banner.startswith('220'):
                 print(f"FTP detected on port {port}")
+                hosts[interface][dest_ip]["tcp"][str(port)] = "ftp"
             elif "login:" in banner.lower() or "username:" in banner.lower() or "telnet" in banner.lower():
                 print(f"Telnet service detected on port {port}")
+                hosts[interface][dest_ip]["tcp"][str(port)] = "telnet"
             else:
                 print(f"Other service detected")
+                hosts[interface][dest_ip]["tcp"][str(port)] = "other"
         return 0
     except socket.timeout:
         # Testing for HTTP
@@ -51,10 +54,12 @@ def tcp_scan(port):
         if response.startswith('HTTP/'):
             with print_lock:
                 print(f"HTTP service detected")
+                hosts[interface][dest_ip]["tcp"][str(port)] = "http"
         # Detects echo service if the exact same message is sent back
         elif response == header_req.decode():
             with print_lock:
                 print(f"Echo service detected")
+                hosts[interface][dest_ip]["tcp"][str(port)] = "echo"
     except Exception as e:
         pass
     finally:
@@ -118,7 +123,7 @@ for interface in interfaces:
                             sha = ':'.join(format(byte, '02x') for byte in sha) # Convert MAC Address to string
                             spa = socket.inet_ntoa(spa) # Convert IP address to string
                             print("Host discovered. MAC Address: " + sha + ". IP address: " + spa)
-                            hosts[interface].append({'IP': spa, 'MAC': sha})
+                            hosts[interface][spa] = {"mac": sha, "tcp": {}}
                             break
                         received += 1
                     if received == 3:
@@ -135,7 +140,7 @@ for interface in interfaces:
 
         
         # Add current machine to interface
-        # hosts[interface].append({'IP': str(my_ip), 'MAC': MAC_addr['addr']})
+        hosts[interface].append({'IP': str(my_ip), 'MAC': MAC_addr['addr']})
 
         # Close PF_PACKET socket
         sock.close()
@@ -145,7 +150,7 @@ for interface in interfaces:
         print(hosts)
 
         for host in hosts[interface]:
-            dest_ip = host['IP']
+            dest_ip = host
             print(f"Scanning host {dest_ip}")
             q = Queue()
             for port in range(1, 65536):
@@ -156,3 +161,11 @@ for interface in interfaces:
                 thread.start()
             q.join()
 
+data = {
+    'machines': hosts,
+}
+
+filename = 'results.json'
+
+with open(filename, 'w') as f:
+    json.dump(data, f, indent=4)
