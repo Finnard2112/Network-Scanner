@@ -107,7 +107,7 @@ for interface in interfaces:
                             sha = ':'.join(format(byte, '02x') for byte in sha) # Convert MAC Address to string
                             spa = socket.inet_ntoa(spa) # Convert IP address to string
                             print("Host discovered. MAC Address: " + sha + ". IP address: " + spa)
-                            hosts[interface].append({'IP': tpa, 'MAC': sha})
+                            hosts[interface].append({'IP': spa, 'MAC': sha})
                             break
                         received += 1
                     if received == 3:
@@ -130,6 +130,8 @@ for interface in interfaces:
         sock.close()
 
         source_ip = str(my_ip)
+
+        print(hosts)
 
         for host in hosts[interface]:
             dest_ip = host['IP']
