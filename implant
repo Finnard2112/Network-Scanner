@@ -40,6 +40,15 @@ def tcp_scan(port):
             else:
                 print(f"Other service detected")
         return 0
+    except socket.timeout:
+        # Testing for HTTP
+        sock.send(b"HEAD / HTTP/1.1\r\nHost: " + dest_ip.encode() + b"\r\nConnection: close\r\n\r\n")
+        response = sock.recv(1024)
+        response = response.decode()
+        if response.startswith('HTTP/'):
+            with print_lock:
+                print(f"HTTP service detected. Response:\n{response}")
+
     except Exception as e:
         pass
     finally:
